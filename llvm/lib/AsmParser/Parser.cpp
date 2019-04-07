@@ -25,7 +25,7 @@ using namespace llvm;
 bool llvm::parseAssemblyInto(MemoryBufferRef F, Module *M,
                              ModuleSummaryIndex *Index, SMDiagnostic &Err,
                              SlotMapping *Slots, bool UpgradeDebugInfo,
-                             StringRef DataLayoutString) {
+                             StringRef DataLayoutString, bool DebugAssembly) {
   SourceMgr SM;
   std::unique_ptr<MemoryBuffer> Buf = MemoryBuffer::getMemBuffer(F);
   SM.AddNewSourceBuffer(std::move(Buf), SMLoc());
@@ -40,12 +40,12 @@ bool llvm::parseAssemblyInto(MemoryBufferRef F, Module *M,
 std::unique_ptr<Module>
 llvm::parseAssembly(MemoryBufferRef F, SMDiagnostic &Err, LLVMContext &Context,
                     SlotMapping *Slots, bool UpgradeDebugInfo,
-                    StringRef DataLayoutString) {
+                    StringRef DataLayoutString, bool DebugAssembly) {
   std::unique_ptr<Module> M =
       make_unique<Module>(F.getBufferIdentifier(), Context);
 
   if (parseAssemblyInto(F, M.get(), nullptr, Err, Slots, UpgradeDebugInfo,
-                        DataLayoutString))
+                        DataLayoutString, DebugAssembly))
     return nullptr;
 
   return M;

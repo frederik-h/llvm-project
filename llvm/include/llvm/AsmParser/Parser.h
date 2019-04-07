@@ -117,11 +117,14 @@ parseSummaryIndexAssemblyFile(StringRef Filename, SMDiagnostic &Err);
 ///                         This option should only be set to false by llvm-as
 ///                         for use inside the LLVM testuite!
 /// \param DataLayoutString Override datalayout in the llvm assembly.
+/// \param DebugAssembly Add debug information for debugging the parsed
+/// 			 assembly. This replaces existing debug information.
 std::unique_ptr<Module> parseAssembly(MemoryBufferRef F, SMDiagnostic &Err,
                                       LLVMContext &Context,
                                       SlotMapping *Slots = nullptr,
                                       bool UpgradeDebugInfo = true,
-                                      StringRef DataLayoutString = "");
+                                      StringRef DataLayoutString = "",
+                                      bool DebugAssembly = false);
 
 /// Parse LLVM Assembly including the summary index from a MemoryBuffer.
 ///
@@ -167,10 +170,13 @@ parseSummaryIndexAssembly(MemoryBufferRef F, SMDiagnostic &Err);
 ///                         This option should only be set to false by llvm-as
 ///                         for use inside the LLVM testuite!
 /// \param DataLayoutString Override datalayout in the llvm assembly.
+/// \param DebugAssembly Add debug information for debugging the parsed
+/// 			 assembly. This replaces existing debug information.
 bool parseAssemblyInto(MemoryBufferRef F, Module *M, ModuleSummaryIndex *Index,
                        SMDiagnostic &Err, SlotMapping *Slots = nullptr,
                        bool UpgradeDebugInfo = true,
-                       StringRef DataLayoutString = "");
+                       StringRef DataLayoutString = "",
+                       bool DebugAssembly = false);
 
 /// Parse a type and a constant value in the given string.
 ///

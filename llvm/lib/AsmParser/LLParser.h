@@ -165,14 +165,21 @@ namespace llvm {
 
     std::string SourceFileName;
 
+    // Indicates that the parser should create debug information that
+    // refers to the locations in the parsed .ll file. This replaces
+    // all existing debug information found in the parsed file.
+    bool DebugLL;
+
   public:
     LLParser(StringRef F, SourceMgr &SM, SMDiagnostic &Err, Module *M,
              ModuleSummaryIndex *Index, LLVMContext &Context,
              SlotMapping *Slots = nullptr, bool UpgradeDebugInfo = true,
-             StringRef DataLayoutString = "")
+             StringRef DataLayoutString = "", bool DebugLL = false)
         : Context(Context), Lex(F, SM, Err, Context), M(M), Index(Index),
           Slots(Slots), BlockAddressPFS(nullptr),
-          UpgradeDebugInfo(UpgradeDebugInfo), DataLayoutStr(DataLayoutString) {
+          UpgradeDebugInfo(UpgradeDebugInfo), DataLayoutStr(DataLayoutString),
+          DebugLL(DebugLL)
+    {
       if (!DataLayoutStr.empty())
         M->setDataLayout(DataLayoutStr);
     }
