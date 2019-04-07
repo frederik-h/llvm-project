@@ -848,7 +848,7 @@ struct TempMDNodeDeleter {
 ///
 /// Metadata nodes can be uniqued, like constants, or distinct.  Temporary
 /// metadata nodes (with full support for RAUW) can be used to delay uniquing
-/// until forward references are known.  The basic metadata node is an \a
+/// until forward references are known. The basic metadata node is an \a
 /// MDTuple.
 ///
 /// There is limited support for RAUW at construction time.  At construction

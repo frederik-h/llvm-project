@@ -28,7 +28,7 @@ namespace llvm {
   /// This class is a wrapper around a tracking reference to an \a DILocation
   /// pointer.
   ///
-  /// To avoid extra includes, \a DebugLoc doubles the \a DILocation API with a
+  /// To avoid extra includes, \a DebugLoc doubles the \a DILocation API with
   /// one based on relatively opaque \a MDNode pointers.
   class DebugLoc {
     TrackingMDNodeRef Loc;
