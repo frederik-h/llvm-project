@@ -1,4 +1,4 @@
-//===-- LLParser.cpp - Parser Class ---------------------------------------===//
+﻿//===-- LLParser.cpp - Parser Class ---------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -17,6 +17,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/AsmParser/SlotMapping.h"
+#include "IRDebugCreator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/AutoUpgrade.h"
@@ -24,6 +25,7 @@
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/Comdat.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
@@ -31,6 +33,7 @@
 #include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
@@ -50,7 +53,7 @@
 #include <cstring>
 #include <iterator>
 #include <vector>
-
+#include <iostream>
 using namespace llvm;
 
 static std::string getTypeString(Type *T) {
@@ -58,6 +61,15 @@ static std::string getTypeString(Type *T) {
   raw_string_ostream Tmp(Result);
   Tmp << *T;
   return Tmp.str();
+}
+
+std::unique_ptr<SourceLocationMap> LLParser::RunAndCollectLocations()
+{
+    SourceLocationMap *map = new SourceLocationMap(GetLineAndNumber);
+    LocationMap = std::unique_ptr<SourceLocationMap>(map);
+    bool success = !Run();
+    return success
+            ? std::move(LocationMap) : std::unique_ptr<SourceLocationMap>();
 }
 
 /// Run: module ::= toplevelentity*
@@ -70,8 +82,25 @@ bool LLParser::Run() {
         Lex.getLoc(),
         "Can't read textual IR with a Context that discards named Values");
 
-  return ParseTopLevelEntities() || ValidateEndOfModule() ||
-         ValidateEndOfIndex();
+  if (ParseTopLevelEntities() || ValidateEndOfModule() ||
+      ValidateEndOfIndex())
+      return true;
+
+  if (DebugLL) {
+      llvm::StripDebugInfo(*M);
+      // TODO [debug-ir] Use "CodeView" and "Debug Info Version" for Windows. How should this be decided?
+      //M->addModuleFlag(llvm::Module::Warning, "Dwarf Version", DEBUG_METADATA_VERSION);
+
+      DIBuilder builder(*M, true, nullptr);
+
+//      DIFile *file = builder.createFile(IRFileName, ".");
+//      IRDebugCreator debugCreator(*file, builder, Context, *LocationMap.get());
+//      debugCreator.visit(*M);
+
+//      builder.finalize();
+  }
+
+  return false;
 }
 
 bool LLParser::parseStandaloneConstantValue(Constant *&C,
@@ -1988,9 +2017,13 @@ bool LLParser::ParseInstructionMetadata(Instruction &Inst) {
     if (ParseMetadataAttachment(MDK, N))
       return true;
 
-    Inst.setMetadata(MDK, N);
+    // Add the parsed metadata unless it is debug
+    // info and we were told to create our own debug info
+    //if (MDK == LLVMContext::MD_dbg)
+        Inst.setMetadata(MDK, N);
     if (MDK == LLVMContext::MD_tbaa)
       InstsWithTBAATag.push_back(&Inst);
+
 
     // If this is the end of the list, we're done.
   } while (EatIfPresent(lltok::comma));
@@ -5175,6 +5208,7 @@ bool LLParser::ParseTypeAndBasicBlock(BasicBlock *&BB, LocTy &Loc,
 bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
   // Parse the linkage.
   LocTy LinkageLoc = Lex.getLoc();
+  // TODO [debug-ir] Save location for later processing by debug-ir
   unsigned Linkage;
   unsigned Visibility;
   unsigned DLLStorageClass;
@@ -5384,6 +5418,11 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
                    ArgList[i].Name + "'");
   }
 
+//  if (DebugLL)
+//      IRDebugCreator::attachLocationMD(Context, *Fn, LinkageLoc);
+  if (LocationMap)
+      LocationMap->setFunctionLoc(*Fn, LinkageLoc);
+
   if (isDefine)
     return false;
 
@@ -5539,6 +5578,27 @@ bool LLParser::ParseBasicBlock(PerFunctionState &PFS) {
 
     // Set the name on the instruction.
     if (PFS.SetInstName(NameID, NameStr, NameLoc, Inst)) return true;
+//    if (DebugLL)
+//    {
+//        std::pair<unsigned, unsigned> lineAndCol =
+//                Lex.getLineAndColumn(NameLoc);
+//        DIScope* scope = PFS.getFunction().getSubprogram();
+//        DILocation* instrLoc = DILocation::get(Context, lineAndCol.first,
+//                                               lineAndCol.second, scope);
+//        Inst->setMetadata("debugir.location", instrLoc);
+
+//        int64_t locPtr = reinterpret_cast<int64_t>(NameLoc.getPointer());
+//        ConstantInt *ptrConst = ConstantInt::get(Context,
+//                                                APInt(64, locPtr, true));
+//        ConstantAsMetadata* md = ConstantAsMetadata::get(ptrConst);
+//        MDNode* constInt = MDNode::get(Context, ArrayRef<Metadata*>(md));
+//        Inst->setMetadata("debugir.location_ptr", constInt);
+//        Inst->setMetadata("debugir.scope", scope);
+//    }
+
+    if (LocationMap)
+        LocationMap->setInstructionLoc(*Inst, NameLoc);
+
   } while (!Inst->isTerminator());
 
   return false;

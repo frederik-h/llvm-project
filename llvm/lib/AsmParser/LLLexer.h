@@ -72,6 +72,7 @@ namespace llvm {
     void Warning(LocTy WarningLoc, const Twine &Msg) const;
     void Warning(const Twine &Msg) const { return Warning(getLoc(), Msg); }
 
+    std::pair<unsigned, unsigned> getLineAndColumn(LocTy loc);
   private:
     lltok::Kind LexToken();
 

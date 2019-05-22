@@ -64,10 +64,12 @@ std::unique_ptr<Module> parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
 ///                         This option should only be set to false by llvm-as
 ///                         for use inside the LLVM testuite!
 /// \param DataLayoutString Override datalayout in the llvm assembly.
+/// \param DebugIR
 std::unique_ptr<Module> parseIRFile(StringRef Filename, SMDiagnostic &Err,
                                     LLVMContext &Context,
                                     bool UpgradeDebugInfo = true,
-                                    StringRef DataLayoutString = "");
+                                    StringRef DataLayoutString = "",
+                                    bool DebugIR = false);
 }
 
 #endif

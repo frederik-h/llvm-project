@@ -173,12 +173,18 @@ public:
 
   /// Find the line number for the specified location in the specified file.
   /// This is not a fast method.
+  /// \param BufferId The id of the buffer containing the location.
+  ///        If this is set to 0, it is determined automatically.
+
   unsigned FindLineNumber(SMLoc Loc, unsigned BufferID = 0) const {
     return getLineAndColumn(Loc, BufferID).first;
   }
 
   /// Find the line and column number for the specified location in the
-  /// specified file. This is not a fast method.
+  /// specified file.
+  /// This is not a fast method.
+  ///  \param BufferId The id of the buffer containing the location.
+  ///         If this is set to 0, it is determined automatically.
   std::pair<unsigned, unsigned> getLineAndColumn(SMLoc Loc,
                                                  unsigned BufferID = 0) const;
 

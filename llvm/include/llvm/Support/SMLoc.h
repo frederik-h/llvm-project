@@ -22,7 +22,6 @@ namespace llvm {
 /// Represents a location in source code.
 class SMLoc {
   const char *Ptr = nullptr;
-
 public:
   SMLoc() = default;
 

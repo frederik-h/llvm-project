@@ -23,6 +23,7 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/ValueHandle.h"
+#include "IRDebugCreator.h"
 #include <map>
 
 namespace llvm {
@@ -168,22 +169,28 @@ namespace llvm {
     // Indicates that the parser should create debug information that
     // refers to the locations in the parsed .ll file. This replaces
     // all existing debug information found in the parsed file.
+    std::unique_ptr<SourceLocationMap> LocationMap;
     bool DebugLL;
-
+    std::string IRFileName;
+    std::function<std::pair<unsigned, unsigned>(LocTy)> GetLineAndNumber;
   public:
     LLParser(StringRef F, SourceMgr &SM, SMDiagnostic &Err, Module *M,
              ModuleSummaryIndex *Index, LLVMContext &Context,
              SlotMapping *Slots = nullptr, bool UpgradeDebugInfo = true,
-             StringRef DataLayoutString = "", bool DebugLL = false)
+             StringRef DataLayoutString = "", bool DebugLL = false,
+             StringRef IRFileName = "")
         : Context(Context), Lex(F, SM, Err, Context), M(M), Index(Index),
           Slots(Slots), BlockAddressPFS(nullptr),
           UpgradeDebugInfo(UpgradeDebugInfo), DataLayoutStr(DataLayoutString),
-          DebugLL(DebugLL)
+          LocationMap(std::unique_ptr<SourceLocationMap>()),
+          DebugLL(DebugLL), IRFileName(IRFileName),
+          GetLineAndNumber([&](LocTy loc) { return SM.getLineAndColumn(loc); })
     {
       if (!DataLayoutStr.empty())
         M->setDataLayout(DataLayoutStr);
     }
     bool Run();
+    std::unique_ptr<SourceLocationMap> RunAndCollectLocations();
 
     bool parseStandaloneConstantValue(Constant *&C, const SlotMapping *Slots);
 

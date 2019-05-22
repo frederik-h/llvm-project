@@ -31,7 +31,12 @@ bool LLLexer::Error(LocTy ErrorLoc, const Twine &Msg) const {
 }
 
 void LLLexer::Warning(LocTy WarningLoc, const Twine &Msg) const {
-  SM.PrintMessage(WarningLoc, SourceMgr::DK_Warning, Msg);
+    SM.PrintMessage(WarningLoc, SourceMgr::DK_Warning, Msg);
+}
+
+std::pair<unsigned, unsigned> LLLexer::getLineAndColumn(LLLexer::LocTy loc)
+{
+    return SM.getLineAndColumn(loc);
 }
 
 //===----------------------------------------------------------------------===//

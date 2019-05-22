@@ -83,6 +83,10 @@ namespace {
                                  cl::desc("Force interpretation: disable JIT"),
                                  cl::init(false));
 
+  cl::opt<bool> DebugIR("debug-ir",
+                        cl::desc("Create debug information for debugging IR"),
+                        cl::init(false));
+
   cl::opt<JITKind> UseJITKind("jit-kind",
                               cl::desc("Choose underlying JIT kind."),
                               cl::init(JITKind::MCJIT),
@@ -387,10 +391,12 @@ int main(int argc, char **argv, char * const *envp) {
 
   // Load the bitcode...
   SMDiagnostic Err;
-  std::unique_ptr<Module> Owner = parseIRFile(InputFile, Err, Context);
+  std::unique_ptr<Module> Owner = parseIRFile(InputFile, Err, Context, true, "", DebugIR);
   Module *Mod = Owner.get();
   if (!Mod)
     reportError(Err, argv[0]);
+
+  Mod->dump();
 
   if (EnableCacheManager) {
     std::string CacheName("file:");

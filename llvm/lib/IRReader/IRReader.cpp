@@ -22,6 +22,11 @@ using namespace llvm;
 
 namespace llvm {
   extern bool TimePassesIsEnabled;
+
+  extern std::unique_ptr<Module>
+  parseAssembly(MemoryBufferRef F, SMDiagnostic &Err, LLVMContext &Context,
+                SlotMapping *Slots, bool UpgradeDebugInfo,
+                StringRef DataLayoutString, bool DebugAssembly, StringRef FileName);
 }
 
 static const char *const TimeIRParsingGroupName = "irparse";
@@ -65,37 +70,50 @@ std::unique_ptr<Module> llvm::getLazyIRFileModule(StringRef Filename,
                          ShouldLazyLoadMetadata);
 }
 
+namespace llvm {
+static std::unique_ptr<Module> parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
+                                       LLVMContext &Context,
+                                       bool UpgradeDebugInfo,
+                                       StringRef DataLayoutString,
+                                       bool DebugIR,
+                                       StringRef FileName) {
+    NamedRegionTimer T(TimeIRParsingName, TimeIRParsingDescription,
+                       TimeIRParsingGroupName, TimeIRParsingGroupDescription,
+                       TimePassesIsEnabled);
+    if (isBitcode((const unsigned char *)Buffer.getBufferStart(),
+                  (const unsigned char *)Buffer.getBufferEnd())) {
+        Expected<std::unique_ptr<Module>> ModuleOrErr =
+                parseBitcodeFile(Buffer, Context);
+        if (Error E = ModuleOrErr.takeError()) {
+            handleAllErrors(std::move(E), [&](ErrorInfoBase &EIB) {
+                Err = SMDiagnostic(Buffer.getBufferIdentifier(), SourceMgr::DK_Error,
+                                   EIB.message());
+            });
+            return nullptr;
+        }
+        if (!DataLayoutString.empty())
+            ModuleOrErr.get()->setDataLayout(DataLayoutString);
+        return std::move(ModuleOrErr.get());
+    }
+
+    return llvm::parseAssembly(Buffer, Err, Context, nullptr, UpgradeDebugInfo,
+                               DataLayoutString, DebugIR, FileName);
+}
+
+}
+
 std::unique_ptr<Module> llvm::parseIR(MemoryBufferRef Buffer, SMDiagnostic &Err,
                                       LLVMContext &Context,
                                       bool UpgradeDebugInfo,
                                       StringRef DataLayoutString) {
-  NamedRegionTimer T(TimeIRParsingName, TimeIRParsingDescription,
-                     TimeIRParsingGroupName, TimeIRParsingGroupDescription,
-                     TimePassesIsEnabled);
-  if (isBitcode((const unsigned char *)Buffer.getBufferStart(),
-                (const unsigned char *)Buffer.getBufferEnd())) {
-    Expected<std::unique_ptr<Module>> ModuleOrErr =
-        parseBitcodeFile(Buffer, Context);
-    if (Error E = ModuleOrErr.takeError()) {
-      handleAllErrors(std::move(E), [&](ErrorInfoBase &EIB) {
-        Err = SMDiagnostic(Buffer.getBufferIdentifier(), SourceMgr::DK_Error,
-                           EIB.message());
-      });
-      return nullptr;
-    }
-    if (!DataLayoutString.empty())
-      ModuleOrErr.get()->setDataLayout(DataLayoutString);
-    return std::move(ModuleOrErr.get());
-  }
-
-  return parseAssembly(Buffer, Err, Context, nullptr, UpgradeDebugInfo,
-                       DataLayoutString);
+    return llvm::parseIR(Buffer, Err, Context, UpgradeDebugInfo, DataLayoutString, false, StringRef());
 }
 
 std::unique_ptr<Module> llvm::parseIRFile(StringRef Filename, SMDiagnostic &Err,
                                           LLVMContext &Context,
                                           bool UpgradeDebugInfo,
-                                          StringRef DataLayoutString) {
+                                          StringRef DataLayoutString,
+                                          bool DebugIR) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(Filename);
   if (std::error_code EC = FileOrErr.getError()) {
@@ -105,7 +123,7 @@ std::unique_ptr<Module> llvm::parseIRFile(StringRef Filename, SMDiagnostic &Err,
   }
 
   return parseIR(FileOrErr.get()->getMemBufferRef(), Err, Context,
-                 UpgradeDebugInfo, DataLayoutString);
+                 UpgradeDebugInfo, DataLayoutString, DebugIR, Filename);
 }
 
 //===----------------------------------------------------------------------===//

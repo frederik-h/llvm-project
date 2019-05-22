@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 /// @file
-/// ModuleSummaryIndex.h This file contains the declarations the classes that
+/// ModuleSummaryIndex.h This file contains the declarations of the classes that
 ///  hold the module index and summary for function importing.
 //
 //===----------------------------------------------------------------------===//
