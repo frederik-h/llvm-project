@@ -165,26 +165,21 @@ namespace llvm {
     StringRef DataLayoutStr;
 
     std::string SourceFileName;
-
-    // Indicates that the parser should create debug information that
-    // refers to the locations in the parsed .ll file. This replaces
-    // all existing debug information found in the parsed file.
     std::unique_ptr<SourceLocationMap> LocationMap;
-    bool DebugLL;
-    std::string IRFileName;
-    std::function<std::pair<unsigned, unsigned>(LocTy)> GetLineAndNumber;
+
+    /// Returns the line and column for a given offset in the SM's
+    /// buffer.
+    std::function<std::pair<unsigned, unsigned>(LocTy)> GetLineAndColumn;
   public:
     LLParser(StringRef F, SourceMgr &SM, SMDiagnostic &Err, Module *M,
              ModuleSummaryIndex *Index, LLVMContext &Context,
              SlotMapping *Slots = nullptr, bool UpgradeDebugInfo = true,
-             StringRef DataLayoutString = "", bool DebugLL = false,
-             StringRef IRFileName = "")
+             StringRef DataLayoutString = "")
         : Context(Context), Lex(F, SM, Err, Context), M(M), Index(Index),
           Slots(Slots), BlockAddressPFS(nullptr),
           UpgradeDebugInfo(UpgradeDebugInfo), DataLayoutStr(DataLayoutString),
           LocationMap(std::unique_ptr<SourceLocationMap>()),
-          DebugLL(DebugLL), IRFileName(IRFileName),
-          GetLineAndNumber([&](LocTy loc) { return SM.getLineAndColumn(loc); })
+          GetLineAndColumn([&](LocTy loc) { return SM.getLineAndColumn(loc); } )
     {
       if (!DataLayoutStr.empty())
         M->setDataLayout(DataLayoutStr);

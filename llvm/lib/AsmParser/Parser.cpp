@@ -46,11 +46,14 @@ bool parseAssemblyInto(MemoryBufferRef F, Module *M,
         std::unique_ptr<SourceLocationMap> map =
                 LLParser(F.getBuffer(), SM, Err, M, Index,
                         M ? M->getContext() : Context, Slots, UpgradeDebugInfo,
-                        DataLayoutString, DebugAssembly, FileName)
+                        DataLayoutString)
                 .RunAndCollectLocations();
 
         if (!map)
             return true;
+
+
+        llvm::StripDebugInfo(*M);
 
         DIBuilder builder(*M, true, nullptr);
 
@@ -64,7 +67,7 @@ bool parseAssemblyInto(MemoryBufferRef F, Module *M,
     }
     return LLParser(F.getBuffer(), SM, Err, M, Index,
                     M ? M->getContext() : Context, Slots, UpgradeDebugInfo,
-                    DataLayoutString, false, FileName)
+                    DataLayoutString)
             .Run();
 
 }

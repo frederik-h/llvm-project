@@ -65,7 +65,7 @@ static std::string getTypeString(Type *T) {
 
 std::unique_ptr<SourceLocationMap> LLParser::RunAndCollectLocations()
 {
-    SourceLocationMap *map = new SourceLocationMap(GetLineAndNumber);
+    SourceLocationMap *map = new SourceLocationMap(GetLineAndColumn);
     LocationMap = std::unique_ptr<SourceLocationMap>(map);
     bool success = !Run();
     return success
@@ -82,25 +82,8 @@ bool LLParser::Run() {
         Lex.getLoc(),
         "Can't read textual IR with a Context that discards named Values");
 
-  if (ParseTopLevelEntities() || ValidateEndOfModule() ||
-      ValidateEndOfIndex())
-      return true;
-
-  if (DebugLL) {
-      llvm::StripDebugInfo(*M);
-      // TODO [debug-ir] Use "CodeView" and "Debug Info Version" for Windows. How should this be decided?
-      //M->addModuleFlag(llvm::Module::Warning, "Dwarf Version", DEBUG_METADATA_VERSION);
-
-      DIBuilder builder(*M, true, nullptr);
-
-//      DIFile *file = builder.createFile(IRFileName, ".");
-//      IRDebugCreator debugCreator(*file, builder, Context, *LocationMap.get());
-//      debugCreator.visit(*M);
-
-//      builder.finalize();
-  }
-
-  return false;
+  return (ParseTopLevelEntities() || ValidateEndOfModule()
+          || ValidateEndOfIndex());
 }
 
 bool LLParser::parseStandaloneConstantValue(Constant *&C,
@@ -2017,13 +2000,9 @@ bool LLParser::ParseInstructionMetadata(Instruction &Inst) {
     if (ParseMetadataAttachment(MDK, N))
       return true;
 
-    // Add the parsed metadata unless it is debug
-    // info and we were told to create our own debug info
-    //if (MDK == LLVMContext::MD_dbg)
-        Inst.setMetadata(MDK, N);
+    Inst.setMetadata(MDK, N);
     if (MDK == LLVMContext::MD_tbaa)
       InstsWithTBAATag.push_back(&Inst);
-
 
     // If this is the end of the list, we're done.
   } while (EatIfPresent(lltok::comma));
@@ -5418,8 +5397,6 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
                    ArgList[i].Name + "'");
   }
 
-//  if (DebugLL)
-//      IRDebugCreator::attachLocationMD(Context, *Fn, LinkageLoc);
   if (LocationMap)
       LocationMap->setFunctionLoc(*Fn, LinkageLoc);
 
@@ -5578,23 +5555,6 @@ bool LLParser::ParseBasicBlock(PerFunctionState &PFS) {
 
     // Set the name on the instruction.
     if (PFS.SetInstName(NameID, NameStr, NameLoc, Inst)) return true;
-//    if (DebugLL)
-//    {
-//        std::pair<unsigned, unsigned> lineAndCol =
-//                Lex.getLineAndColumn(NameLoc);
-//        DIScope* scope = PFS.getFunction().getSubprogram();
-//        DILocation* instrLoc = DILocation::get(Context, lineAndCol.first,
-//                                               lineAndCol.second, scope);
-//        Inst->setMetadata("debugir.location", instrLoc);
-
-//        int64_t locPtr = reinterpret_cast<int64_t>(NameLoc.getPointer());
-//        ConstantInt *ptrConst = ConstantInt::get(Context,
-//                                                APInt(64, locPtr, true));
-//        ConstantAsMetadata* md = ConstantAsMetadata::get(ptrConst);
-//        MDNode* constInt = MDNode::get(Context, ArrayRef<Metadata*>(md));
-//        Inst->setMetadata("debugir.location_ptr", constInt);
-//        Inst->setMetadata("debugir.scope", scope);
-//    }
 
     if (LocationMap)
         LocationMap->setInstructionLoc(*Inst, NameLoc);
