@@ -35,10 +35,6 @@ public:
 public:
     void visitInstruction(Instruction &I);
     void visitFunction(Function &F);
-
-    static void attachLocationMD(LLVMContext &context,
-                                 GlobalObject &o,
-                                 const LocTy loc);
 private:
     std::string getTypeName(const Type &T);
     unsigned getTypeEncoding(const Type &T);

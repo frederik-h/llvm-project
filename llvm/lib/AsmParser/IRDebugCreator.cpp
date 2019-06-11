@@ -99,32 +99,6 @@ void IRDebugCreator::visitFunction(Function &F) {
     FunctionScope = subprogram;
 }
 
-
-/// Attach the source buffer location to the object as a metadata
-/// node. This metadata will be used to obtain line and column numbers
-/// for debug metadata and pruned later if the object is visited by this
-/// InstVisitor.
-void IRDebugCreator::attachLocationMD(LLVMContext &context, GlobalObject &o,
-                                      const IRDebugCreator::LocTy loc)
-{
-    /*  int64_t locPtr = reinterpret_cast<int64_t>(loc.getPointer());
-        ConstantInt *ptrConst = ConstantInt::get(context,
-                                                APInt(64, locPtr, true));
-        ConstantAsMetadata* md = ConstantAsMetadata::get(ptrConst);
-        MDNode* constInt = MDNode::get(context, ArrayRef<Metadata*>(md));
-        o.setMetadata("debugir.location_ptr", constInt)*/;
-
-}
-
-//IRDebugCreator::LocTy IRDebugCreator::getBufferLocation(GlobalObject &o)
-//{
-//    /*   MDNode* md = o.getMetadata("debugir.location_ptr");
-//        auto* mdTup = static_cast<MDTuple*>(md);
-//        ConstantAsMetadata* constMd = mdTup->get
-////        ConstantInt* constInt = constMd->getValue();
-//        unsigned locPtr = constInt->getValue().getZExtValue()*/;
-
-
 void
 SourceLocationMap::setInstructionLoc(const Instruction &I,
                                      const LocTy loc)
