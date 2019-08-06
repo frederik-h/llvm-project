@@ -47,7 +47,10 @@ static cl::opt<bool> EmitModuleHash("module-hash", cl::desc("Emit module hash"),
                                     cl::init(false));
 
 static cl::opt<bool> DumpAsm("d", cl::desc("Print assembly as parsed"),
-                             cl::Hidden);
+             cl::Hidden);
+
+static cl::opt<bool> DebugIR("debug-ir", cl::desc("Create debug information for debugging the IR."),
+             cl::init(false));
 
 static cl::opt<bool>
     DisableVerify("disable-verify", cl::Hidden,
@@ -114,7 +117,7 @@ int main(int argc, char **argv) {
   // Parse the file now...
   SMDiagnostic Err;
   auto ModuleAndIndex = parseAssemblyFileWithIndex(
-      InputFilename, Err, Context, nullptr, !DisableVerify, ClDataLayout);
+      InputFilename, Err, Context, nullptr, !DisableVerify, ClDataLayout, DebugIR);
   std::unique_ptr<Module> M = std::move(ModuleAndIndex.Mod);
   if (!M.get()) {
     Err.print(argv[0], errs());

@@ -121,14 +121,15 @@ llvm::parseAssemblyFile(StringRef Filename, SMDiagnostic &Err,
 
 ParsedModuleAndIndex llvm::parseAssemblyWithIndex(
     MemoryBufferRef F, SMDiagnostic &Err, LLVMContext &Context,
-    SlotMapping *Slots, bool UpgradeDebugInfo, StringRef DataLayoutString) {
+    SlotMapping *Slots, bool UpgradeDebugInfo, StringRef DataLayoutString,
+    bool DebugAssembly, StringRef FileName) {
   std::unique_ptr<Module> M =
       make_unique<Module>(F.getBufferIdentifier(), Context);
   std::unique_ptr<ModuleSummaryIndex> Index =
       make_unique<ModuleSummaryIndex>(/*HaveGVs=*/true);
 
   if (parseAssemblyInto(F, M.get(), Index.get(), Err, Slots, UpgradeDebugInfo,
-                        DataLayoutString))
+                        DataLayoutString, DebugAssembly, FileName))
     return {nullptr, nullptr};
 
   return {std::move(M), std::move(Index)};
@@ -136,7 +137,8 @@ ParsedModuleAndIndex llvm::parseAssemblyWithIndex(
 
 ParsedModuleAndIndex llvm::parseAssemblyFileWithIndex(
     StringRef Filename, SMDiagnostic &Err, LLVMContext &Context,
-    SlotMapping *Slots, bool UpgradeDebugInfo, StringRef DataLayoutString) {
+    SlotMapping *Slots, bool UpgradeDebugInfo, StringRef DataLayoutString,
+    bool DebugAssembly) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(Filename);
   if (std::error_code EC = FileOrErr.getError()) {
@@ -147,7 +149,8 @@ ParsedModuleAndIndex llvm::parseAssemblyFileWithIndex(
 
   return parseAssemblyWithIndex(FileOrErr.get()->getMemBufferRef(), Err,
                                 Context, Slots, UpgradeDebugInfo,
-                                DataLayoutString);
+                                DataLayoutString, DebugAssembly,
+                                Filename);
 }
 
 std::unique_ptr<Module>

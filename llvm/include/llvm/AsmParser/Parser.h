@@ -90,11 +90,14 @@ struct ParsedModuleAndIndex {
 ///                         This option should only be set to false by llvm-as
 ///                         for use inside the LLVM testuite!
 /// \param DataLayoutString Override datalayout in the llvm assembly.
+/// \param DebugAssembly Creates debug information for debugging the assembly.
+///                      Existing debug information gets replaced.
 ParsedModuleAndIndex
 parseAssemblyFileWithIndex(StringRef Filename, SMDiagnostic &Err,
                            LLVMContext &Context, SlotMapping *Slots = nullptr,
                            bool UpgradeDebugInfo = true,
-                           StringRef DataLayoutString = "");
+                           StringRef DataLayoutString = "",
+                           bool DebugAssembly = false);
 
 /// This function is a main interface to the LLVM Assembly Parser. It parses
 /// an ASCII file that (presumably) contains LLVM Assembly code for a module
@@ -140,7 +143,9 @@ ParsedModuleAndIndex parseAssemblyWithIndex(MemoryBufferRef F,
                                             LLVMContext &Context,
                                             SlotMapping *Slots = nullptr,
                                             bool UpgradeDebugInfo = true,
-                                            StringRef DataLayoutString = "");
+                                            StringRef DataLayoutString = "",
+                                            bool DebugAssembly = false,
+                                            StringRef FileName = StringRef());
 
 /// Parse LLVM Assembly for summary index from a MemoryBuffer.
 ///
