@@ -60,7 +60,7 @@ void IRDebugCreator::visitInstruction(Instruction &I) {
 DISubroutineType* createFunctionType(DIBuilder &B, const Function &F)
 {
     Type *returnType = F.getReturnType();
-    assert(argType && "Function must have a return type.");
+    assert(returnType && "Function must have a return type.");
     StringRef returnTypeString = StringRef(getTypeString(returnType));
 
     DIType *diReturnType = B.createBasicType(returnTypeString,
@@ -90,11 +90,15 @@ void IRDebugCreator::visitFunction(Function &F) {
     StringRef functionName = F.getName();
 
     DISubroutineType *functionType = createFunctionType(Builder, F);
-    DISubprogram *subprogram = Builder.createFunction(&File, functionName,
-                                                      functionName, &File,
-                                                      line, functionType,
-                                                      line, DINode::FlagZero,
-                                                      DISubprogram::SPFlagDefinition);
+    DISubprogram *subprogram =
+        Builder.createFunction(&File, functionName,
+                               functionName, &File,
+                               line, functionType,
+                               line + 1, // line of scope started by function
+                               DINode::FlagPrototyped,
+                               DISubprogram::SPFlagDefinition);
+
+    Builder.finalizeSubprogram(subprogram); 
     F.setSubprogram(subprogram);
     FunctionScope = subprogram;
 }
