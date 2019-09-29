@@ -1,6 +1,8 @@
-; RUN: llvm-as -d -debug-ir %s | FileCheck %s
+; RUN: llvm-as -d -debug-ir %s 2>&1 | FileCheck %s
 
-; CHECK: line
+
+; CHECK: define dso_local i32 @foo(i8*) !dbg ![[FOOMD:[0-9]+]]
+; CHECK: DISubprogram name: "bar" [[FOOMD]]
 define dso_local i32 @foo(i8*) #0 {
   %2 = alloca i8*, align 8
   %3 = alloca i8, align 1
