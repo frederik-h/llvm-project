@@ -2401,6 +2401,7 @@ SDValue AMDGPUTargetLowering::LowerFREM(SDValue Op, SelectionDAG &DAG) const {
   SDValue X = Op.getOperand(0);
   SDValue Y = Op.getOperand(1);
 
+  Flags.setApproximateFuncs(false);
   SDValue Div = DAG.getNode(ISD::FDIV, SL, VT, X, Y, Flags);
   SDValue Trunc = DAG.getNode(ISD::FTRUNC, SL, VT, Div, Flags);
   SDValue Neg = DAG.getNode(ISD::FNEG, SL, VT, Trunc, Flags);
