@@ -981,27 +981,27 @@ SIPeepholeSDWA::matchSDWAOperand(MachineInstr &MI) {
     //                            implicit %2(tied-def 0)
   case AMDGPU::V_PACK_B32_F16_e64: {
     MachineOperand *Dst = TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
+    MachineOperand *Src0 = TII->getNamedOperand(MI, AMDGPU::OpName::src0);
     MachineOperand *Src1 = TII->getNamedOperand(MI, AMDGPU::OpName::src1);
-    MachineOperand *Src2 = TII->getNamedOperand(MI, AMDGPU::OpName::src0);
 
-    if (!Src1->isReg() || !Src2->isReg())
+    if (!Src0->isReg() || !Src1->isReg())
       break;
 
+    Register Reg0 = Src0->getReg();
     Register Reg1 = Src1->getReg();
-    Register Reg2 = Src2->getReg();
+    unsigned SubReg0 = Src0->getSubReg();
     unsigned SubReg1 = Src1->getSubReg();
-    unsigned SubReg2 = Src2->getSubReg();
 
     // Need separate defining instructions writing to the upper and
     // lower words; copying is not profitable.
-    if (Reg1 == Reg2 || Reg1.isPhysical() || Reg2.isPhysical() || SubReg1 ||
-        SubReg2)
+    if (Reg0 == Reg1 || Reg0.isPhysical() || Reg1.isPhysical() || SubReg0 ||
+        SubReg1)
       break;
 
-    // The modified Src2 will write to Src1 hence other direct uses.
+    // The modified Src1 will write to Src0 hence other direct uses
     // might become invalid.
-    if (!MRI->hasOneNonDBGUse(Src1->getReg()) ||
-        !MRI->hasOneNonDBGUse(Src2->getReg()))
+    if (!MRI->hasOneNonDBGUse(Src0->getReg()) ||
+        !MRI->hasOneNonDBGUse(Src1->getReg()))
       break;
 
     // Cannot translate MI modifiers to modifiers on the operands and
@@ -1009,7 +1009,7 @@ SIPeepholeSDWA::matchSDWAOperand(MachineInstr &MI) {
     if (TII->hasAnyModifiersSet(MI))
       break;
 
-    return std::make_unique<SDWADstPreserveOperand>(Dst, Src1, Src2, WORD_1);
+    return std::make_unique<SDWADstPreserveOperand>(Dst, Src1, Src0, WORD_1);
   }
   }
 
