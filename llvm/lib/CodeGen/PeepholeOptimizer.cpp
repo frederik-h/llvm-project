@@ -1085,6 +1085,23 @@ bool PeepholeOptimizer::findNextSource(const TargetRegisterClass *DefRC,
         break;
       }
 
+      // Try to skip REG_SEQUENCE with many sources, since the life range
+      // of the sources may be extended.
+      if (Res.getInst() &&
+          Res.getInst()->getOpcode() == TargetOpcode::REG_SEQUENCE) {
+        unsigned NumSources = (Res.getInst()->getNumOperands() - 1) / 2;
+
+        // FIXME Determine threshold
+        // FIXME Count only sources that could be picked by this function, e.g.
+        // no physical sources.
+        if (NumSources > 8) {
+          LLVM_DEBUG(dbgs() << "findNextSource: REG_SEQUENCE has " << NumSources
+                            << " sources, > 8, aborting\n");
+          Aborted = true;
+          break;
+        }
+      }
+
       CurSrcPair = Res.getSrc(0);
       // Do not extend the live-ranges of physical registers as they add
       // constraints to the register allocator. Moreover, if we want to extend
