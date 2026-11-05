@@ -220,6 +220,9 @@ void AMDGPUMCInstLower::lowerT16FmaMixFP16(const MachineInstr *MI,
 void AMDGPUMCInstLower::lower(const MachineInstr *MI, MCInst &OutMI) const {
   unsigned Opcode = MI->getOpcode();
   const auto *TII = static_cast<const SIInstrInfo *>(ST.getInstrInfo());
+  if (Opcode == AMDGPU::S_OR_B32_endcf || Opcode == AMDGPU::S_OR_B64_endcf)
+    reportFatalInternalError(
+        "exec restore pseudo should have been expanded by SIPreEmitPeephole");
 
   // FIXME: Should be able to handle this with lowerPseudoInstExpansion. We
   // need to select it to the subtarget specific version, and there's no way to

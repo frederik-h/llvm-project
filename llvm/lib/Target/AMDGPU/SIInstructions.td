@@ -504,6 +504,28 @@ def S_AND_B32_term : WrapTerminatorInst<S_AND_B32>;
 def S_AND_SAVEEXEC_B32_term : WrapTerminatorInst<S_AND_SAVEEXEC_B32>;
 }
 
+class WrapEndCfInst<SOP_Pseudo base_inst> : SPseudoInstSI<
+      base_inst.OutOperandList,
+      base_inst.InOperandList> {
+  let Uses = base_inst.Uses;
+  let Defs = base_inst.Defs;
+  let isAsCheapAsAMove = base_inst.isAsCheapAsAMove;
+  let hasSideEffects = base_inst.hasSideEffects;
+  let UseNamedOperandTable = 1;
+  let Size = base_inst.Size;
+  let CodeSize = base_inst.CodeSize;
+  let SchedRW = base_inst.SchedRW;
+}
+
+// EXEC restore instructions lowered from SI_END_CF which
+// SILowerControlFlow found to be redundant.  SIPreEmitPeephole
+// removes them if still redundant or expands the base instruction.
+let WaveSizePredicate = isWave64 in
+def S_OR_B64_endcf : WrapEndCfInst<S_OR_B64>;
+
+let WaveSizePredicate = isWave32 in
+def S_OR_B32_endcf : WrapEndCfInst<S_OR_B32>;
+
 class WrapTerminatorVOPC<VOPC_Pseudo base_inst> : VPseudoInstSI<
       base_inst.OutOperandList,
       base_inst.InOperandList> {

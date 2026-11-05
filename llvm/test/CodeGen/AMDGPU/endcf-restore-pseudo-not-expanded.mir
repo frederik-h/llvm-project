@@ -1,0 +1,19 @@
+# RUN: not --crash llc -mtriple=amdgpu9.00 -start-after=si-pre-emit-peephole %s -o /dev/null 2>&1 | FileCheck %s
+# RUN: not --crash llc -mtriple=amdgpu9.00 -start-after=si-pre-emit-peephole -filetype=obj %s -o /dev/null 2>&1 | FileCheck %s
+
+# Exec restore pseudos must be expanded by SIPreEmitPeephole.
+
+# CHECK: LLVM ERROR: exec restore pseudo should have been expanded by SIPreEmitPeephole
+
+---
+name: not_expanded
+tracksRegLiveness: true
+machineFunctionInfo:
+  isEntryFunction: true
+body:             |
+  bb.0:
+    liveins: $sgpr0_sgpr1
+
+    $exec = S_OR_B64_endcf $exec, $sgpr0_sgpr1, implicit-def dead $scc
+    S_ENDPGM 0
+...

@@ -106,12 +106,18 @@ private:
 
   MachineBasicBlock *process(MachineInstr &MI);
 
-  // Skip to the next instruction, ignoring debug instructions, and trivial
-  // block boundaries (blocks that have one (typically fallthrough) successor,
-  // and the successor has one predecessor.
+  // Skip to the next instruction which reads exec, ignoring trivial block
+  // boundaries (blocks that have one, typically fallthrough, successor).
+  // \p CanCollapseEndCf is set if it is safe to collapse an END_CF before \p It
+  // into an END_CF at the returned position immediately. This requires that
+  // no exec dependent instructions can be inserted in between later, e.g. by
+  // the register allocator. Hence, all skipped instructions must be debug
+  // instructions or unconditional branches and the returned position must be
+  // in \p MBB or in its successor.
   MachineBasicBlock::iterator
   skipIgnoreExecInstsTrivialSucc(MachineBasicBlock &MBB,
-                                 MachineBasicBlock::iterator It) const;
+                                 MachineBasicBlock::iterator It,
+                                 bool &CanCollapseEndCf) const;
 
   /// Find the insertion point for a new conditional branch.
   MachineBasicBlock::iterator
@@ -434,10 +440,11 @@ void SILowerControlFlow::emitLoop(MachineInstr &MI) {
   MI.eraseFromParent();
 }
 
-MachineBasicBlock::iterator
-SILowerControlFlow::skipIgnoreExecInstsTrivialSucc(
-  MachineBasicBlock &MBB, MachineBasicBlock::iterator It) const {
+MachineBasicBlock::iterator SILowerControlFlow::skipIgnoreExecInstsTrivialSucc(
+    MachineBasicBlock &MBB, MachineBasicBlock::iterator It,
+    bool &CanCollapseEndCf) const {
 
+  CanCollapseEndCf = true;
   SmallPtrSet<const MachineBasicBlock *, 4> Visited;
   MachineBasicBlock *B = &MBB;
   do {
@@ -446,12 +453,10 @@ SILowerControlFlow::skipIgnoreExecInstsTrivialSucc(
 
     auto E = B->end();
     for (; It != E; ++It) {
-      if (!It->isDebugInstr() && !It->isUnconditionalBranch()) {
-        LLVM_DEBUG(dbgs() << "Found non-skippable instruction: " << *It
-                          << '\n');
+      if (TII->mayReadEXEC(*MRI, *It))
         break;
-      }
-      LLVM_DEBUG(dbgs() << "Skipping instruction: " << *It << '\n');
+      if (!It->isDebugInstr() && !It->isUnconditionalBranch())
+        CanCollapseEndCf = false;
     }
 
     if (It != E)
@@ -462,6 +467,8 @@ SILowerControlFlow::skipIgnoreExecInstsTrivialSucc(
 
     // If there is one trivial successor, advance to the next block.
     MachineBasicBlock *Succ = *B->succ_begin();
+    if (B != &MBB)
+      CanCollapseEndCf = false;
 
     It = Succ->begin();
     B = Succ;
@@ -608,8 +615,9 @@ void SILowerControlFlow::optimizeEndCf() {
 
   for (MachineInstr *MI : reverse(LoweredEndCf)) {
     MachineBasicBlock &MBB = *MI->getParent();
-    auto Next =
-      skipIgnoreExecInstsTrivialSucc(MBB, std::next(MI->getIterator()));
+    bool CanCollapseEndCf;
+    auto Next = skipIgnoreExecInstsTrivialSucc(
+        MBB, std::next(MI->getIterator()), CanCollapseEndCf);
     if (Next == MBB.end() || !LoweredEndCf.count(&*Next))
       continue;
     // Only skip inner END_CF if outer ENDCF belongs to SI_IF.
@@ -620,6 +628,15 @@ void SILowerControlFlow::optimizeEndCf() {
 
     const MachineInstr *Def = MRI->getUniqueVRegDef(SavedExec);
     if (Def && LoweredIf.count(SavedExec)) {
+      // EXEC-dependent instructions might be inserted between the
+      // END_CFs later, e.g. by register allocation.
+      // SIPreEmitPeephole will remove the instruction if it is still
+      // redundant.
+      if (!CanCollapseEndCf) {
+        if (MI->getOpcode() == LMC.OrOpc)
+          MI->setDesc(TII->get(LMC.OrEndCfOpc));
+        continue;
+      }
       LLVM_DEBUG(dbgs() << "Skip redundant "; MI->dump());
       if (LIS)
         LIS->RemoveMachineInstrFromMaps(*MI);
