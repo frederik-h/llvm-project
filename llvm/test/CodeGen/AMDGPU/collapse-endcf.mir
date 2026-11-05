@@ -199,6 +199,7 @@ body:             |
   ; GCN-NEXT: bb.3:
   ; GCN-NEXT:   successors: %bb.4(0x80000000)
   ; GCN-NEXT: {{  $}}
+  ; GCN-NEXT:   $exec = S_OR_B64 $exec, [[COPY1]], implicit-def dead $scc
   ; GCN-NEXT:   [[DEF:%[0-9]+]]:sgpr_32 = IMPLICIT_DEF
   ; GCN-NEXT:   [[S_BREV_B32_:%[0-9]+]]:sgpr_32 = S_BREV_B32 [[DEF]]
   ; GCN-NEXT:   KILL [[DEF]]
@@ -262,6 +263,7 @@ body:             |
   ; GCN-NEXT: bb.3:
   ; GCN-NEXT:   successors: %bb.4(0x80000000)
   ; GCN-NEXT: {{  $}}
+  ; GCN-NEXT:   $exec = S_OR_B64 $exec, [[COPY1]], implicit-def dead $scc
   ; GCN-NEXT:   [[DEF:%[0-9]+]]:sgpr_32 = IMPLICIT_DEF
   ; GCN-NEXT:   [[S_BREV_B32_:%[0-9]+]]:sgpr_32 = S_BREV_B32 [[DEF]]
   ; GCN-NEXT:   KILL [[DEF]]

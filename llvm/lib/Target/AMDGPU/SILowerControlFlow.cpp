@@ -445,9 +445,13 @@ SILowerControlFlow::skipIgnoreExecInstsTrivialSucc(
       return MBB.end();
 
     auto E = B->end();
-    for ( ; It != E; ++It) {
-      if (TII->mayReadEXEC(*MRI, *It))
+    for (; It != E; ++It) {
+      if (!It->isDebugInstr() && !It->isUnconditionalBranch()) {
+        LLVM_DEBUG(dbgs() << "Found non-skippable instruction: " << *It
+                          << '\n');
         break;
+      }
+      LLVM_DEBUG(dbgs() << "Skipping instruction: " << *It << '\n');
     }
 
     if (It != E)
