@@ -38,6 +38,7 @@ public:
   const unsigned MovTermOpc;
   const unsigned OrOpc;
   const unsigned OrN2Opc;
+  const unsigned OrEndCfOpc;
   const unsigned OrTermOpc;
   const unsigned OrSaveExecOpc;
   const unsigned XorOpc;
@@ -68,6 +69,7 @@ public:
         MovTermOpc(IsWave32 ? AMDGPU::S_MOV_B32_term : AMDGPU::S_MOV_B64_term),
         OrOpc(IsWave32 ? AMDGPU::S_OR_B32 : AMDGPU::S_OR_B64),
         OrN2Opc(IsWave32 ? AMDGPU::S_ORN2_B32 : AMDGPU::S_ORN2_B64),
+        OrEndCfOpc(IsWave32 ? AMDGPU::S_OR_B32_endcf : AMDGPU::S_OR_B64_endcf),
         OrTermOpc(IsWave32 ? AMDGPU::S_OR_B32_term : AMDGPU::S_OR_B64_term),
         OrSaveExecOpc(IsWave32 ? AMDGPU::S_OR_SAVEEXEC_B32
                                : AMDGPU::S_OR_SAVEEXEC_B64),

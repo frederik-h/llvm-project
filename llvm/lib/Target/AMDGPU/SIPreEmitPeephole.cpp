@@ -19,6 +19,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPU.h"
+#include "AMDGPULaneMaskUtils.h"
 #include "GCNSubtarget.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/MachineDominators.h"
@@ -64,6 +65,7 @@ private:
                              const MachineBasicBlock &To) const;
   bool removeExeczBranch(MachineInstr &MI, MachineBasicBlock &SrcMBB);
   bool removeRedundantModeWrites(MachineBasicBlock &SrcMBB) const;
+  bool lowerMarkedExecRestores(MachineFunction &MF) const;
   // Creates a list of packed instructions following an MFMA that are suitable
   // for unpacking.
   void collectUnpackingCandidates(MachineInstr &BeginMI,
@@ -576,6 +578,61 @@ bool SIPreEmitPeephole::removeRedundantModeWrites(
   return Changed;
 }
 
+/// A chain of subsequent SI_END_CF instructions without any
+/// intervening EXEC users and branching can potentially be collapsed
+/// into a single SI_END_CF. SILowerControlFlow recognizes this, but
+/// it cannot always remove the instructions immediately, since later
+/// passes (e.g. register allocation) may insert new EXEC uses. Thus
+/// the first SI_END_CF in such a chain gets marked by lowering to the
+/// S_OR_B{32,64}_endcf pseudo.  Analyze the lowered SI_END_CF chains
+/// for inserted EXEC uses.  If there any, lower the pseudo to the
+/// real instruction, otherwise remove it.
+bool SIPreEmitPeephole::lowerMarkedExecRestores(MachineFunction &MF) const {
+  const MachineRegisterInfo &MRI = MF.getRegInfo();
+  const auto &LMC =
+      AMDGPU::LaneMaskConstants::get(MF.getSubtarget<GCNSubtarget>());
+  bool Changed = false;
+  MachineInstr *Cand = nullptr;
+  for (MachineBasicBlock &MBB : MF) {
+    for (MachineInstr &MI : make_early_inc_range(MBB)) {
+      unsigned OpCode = MI.getOpcode();
+      if (!Cand) {
+        if (OpCode == LMC.OrEndCfOpc) {
+          Cand = &MI;
+          Changed = true;
+        }
+        continue;
+      }
+
+      bool IsRestore = ((OpCode == LMC.OrOpc || OpCode == LMC.OrEndCfOpc) &&
+                        MI.getOperand(0).getReg() == LMC.ExecReg) ||
+                       OpCode == AMDGPU::S_ENDPGM;
+
+      if (IsRestore && Cand->registerDefIsDead(AMDGPU::SCC, TRI)) {
+        LLVM_DEBUG(dbgs() << "Removing redundant EXEC restore: " << *Cand);
+        Cand->eraseFromParent();
+        Cand = MI.getOpcode() == LMC.OrEndCfOpc ? &MI : nullptr;
+
+        continue;
+      }
+
+      if (TII->mayReadEXEC(MRI, MI) ||
+          TII->hasUnwantedEffectsWhenEXECEmpty(MI)) {
+        Cand->setDesc(TII->get(LMC.OrOpc));
+        Cand = OpCode == LMC.OrEndCfOpc ? &MI : nullptr;
+      }
+    }
+
+    MachineBasicBlock *Succ = MBB.getSingleSuccessor();
+    if (Cand && (!Succ || Succ != MBB.getNextNode())) {
+      Cand->setDesc(TII->get(LMC.OrOpc));
+      Cand = nullptr;
+    }
+  }
+
+  return Changed;
+}
+
 bool SIPreEmitPeephole::canUnpackingClobberRegister(const MachineInstr &MI) {
   unsigned OpCode = MI.getOpcode();
   Register DstReg = MI.getOperand(0).getReg();
@@ -853,6 +910,8 @@ bool SIPreEmitPeephole::run(MachineFunction &MF, MachineLoopInfo *LoopInfo) {
   bool Changed = false;
 
   MF.RenumberBlocks();
+
+  Changed |= lowerMarkedExecRestores(MF);
 
   for (MachineBasicBlock &MBB : MF) {
     Changed |= removeRedundantModeWrites(MBB);

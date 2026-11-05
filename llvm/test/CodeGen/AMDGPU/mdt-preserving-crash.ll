@@ -58,7 +58,6 @@ define protected amdgpu_kernel void @_RSENC_PRInit______________________________
 ; CHECK-NEXT:    s_cmp_eq_u32 s6, 0
 ; CHECK-NEXT:    s_cbranch_scc0 .LBB0_9
 ; CHECK-NEXT:  .LBB0_10: ; %Flow
-; CHECK-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; CHECK-NEXT:  .LBB0_11: ; %UnifiedUnreachableBlock
 ; CHECK-NEXT:    ; divergent unreachable
 ; CHECK-NEXT:  .LBB0_12: ; %UnifiedReturnBlock
